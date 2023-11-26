@@ -1,47 +1,66 @@
 package com.tcs.ecommercesystem.orderservice.service;
 
-import com.tcs.ecommercesystem.orderservice.entity.Inventory;
+import com.tcs.ecommercesystem.orderservice.dtos.Item;
 import com.tcs.ecommercesystem.orderservice.entity.Order;
 import com.tcs.ecommercesystem.orderservice.repository.OrderRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class OrderService {
 
     @Autowired
-    private RestTemplate restTemplate;
+    private OrderRepository orderRepository;
 
     @Autowired
-    OrderRepository orderRepository;
+    private RestTemplate restTemplate;
 
-    private static final String SERVICE_NAME = "loan-service";
+    private static final String GET_SERVICE_NAME = "order-service-get";
+    private static final String POST_SERVICE_NAME = "order-service-post";
 
-    private static final String RATE_SERVICE_URL = "http://localhost:9000/api/rates/";
+    private static final String INVENTORY_SERVICE_URL = "http://localhost:8081/inventory/item/";
 
-    public Optional<Order> getOrderById(String orderId) {
-        return orderRepository.findById(orderId);
-    }
-
-
-    @CircuitBreaker(name = SERVICE_NAME, fallbackMethod = "getDefaultOrder")
-    public Order createOrder(String inventoryName) {
-        Inventory inventory = restTemplate.getForObject("http://localhost:8081/inventory-service/inventory/" + inventoryName,
-                Inventory.class);
+    @CircuitBreaker(name = GET_SERVICE_NAME, fallbackMethod = "getDefaultOrders")
+    public Order getOrderById(String id) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Item> entity = new HttpEntity<>(null, headers);
+        ResponseEntity<Item> response = restTemplate.exchange(
+                (INVENTORY_SERVICE_URL + id),
+                HttpMethod.GET, entity,
+                Item.class);
+        Item item = response.getBody();
         Order order = null;
-        if (inventory != null) {
-            order = Order.builder().id(UUID.randomUUID().toString()).inventory(inventory).build();
-            orderRepository.save(order);
+        if (item != null) {
+            System.out.println("Item exists!");
+            order = orderRepository.findById(id).orElse(null);
         }
         return order;
     }
 
-    public Order getDefaultOrder(String type, Exception e) {
-        return new Order();
+    public Order getDefaultOrders(Exception e) throws Exception {
+        throw new Exception("No item found for the provided order");
     }
+
+    @CircuitBreaker(name = POST_SERVICE_NAME, fallbackMethod = "getDefaultOrders")
+    public Order createOrder(Order order) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Item> entity = new HttpEntity<>(null, headers);
+        ResponseEntity<Item> response = restTemplate.exchange(
+                (INVENTORY_SERVICE_URL + order.getItemId()),
+                HttpMethod.GET, entity,
+                Item.class);
+        Item item = response.getBody();
+        if (item != null) {
+            System.out.println("Item exists during save!");
+            return orderRepository.save(order);
+        }
+        return null;
+    }
+
 }

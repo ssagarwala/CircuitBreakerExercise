@@ -1,6 +1,5 @@
 package com.tcs.ecommercesystem.orderservice.repository;
 
-import com.tcs.ecommercesystem.orderservice.entity.Inventory;
 import com.tcs.ecommercesystem.orderservice.entity.Order;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;

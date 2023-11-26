@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @AllArgsConstructor
 @Data
-public class Inventory {
+public class Item {
     @Id
     String id;
     String name;

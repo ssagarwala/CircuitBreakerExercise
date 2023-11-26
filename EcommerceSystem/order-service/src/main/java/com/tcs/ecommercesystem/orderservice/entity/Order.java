@@ -18,5 +18,5 @@ import java.util.List;
 public class Order {
     @Id
     String id;
-    Inventory inventory;
+    String itemId;
 }
